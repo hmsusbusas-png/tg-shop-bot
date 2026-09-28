@@ -9,9 +9,15 @@
 - 🎲 **Catalog** — 4 categories (Family, Strategy, Party, Kids) and 12 real board games with meaningful descriptions and prices
 - 🛒 **Cart** — add games, change quantity with `+/−`, remove items, clear the cart, live total
 - 📝 **Checkout** — FSM-based form: name → phone (validated) → address/comment → confirmation
-- 📦 **Order history** — `/orders` lists all orders of the current user with items and totals
+- 📦 **Order history** — `/orders` shows the last 10 orders of the current user with items and totals
 - 📊 **Admin stats** — `/stats` shows order count, revenue and top-5 games (for the configured `ADMIN_ID`)
 - 💾 **SQLite storage** — `shop.db` is created and seeded automatically on first run
+
+> **Honest limitations:** the cart and the checkout FSM live in memory
+> (`dict` + aiogram `MemoryStorage`), so they are reset when the bot
+> restarts. Only paid orders are durable — they are stored in SQLite.
+> `/orders` returns the last 10 orders per user. There are no screenshots
+> in this repo yet — run the bot to see it live.
 
 ## Quick Start
 
@@ -62,20 +68,9 @@ tg-shop-bot/
 │   └── checkout.py      # FSM checkout, /orders, /stats, /cancel
 ├── scripts/
 │   └── smoke_test.py    # offline test: imports, db init/seed, dispatcher
-├── screenshots/         # bot screenshots (see below)
 ├── requirements.txt
 └── README.md
 ```
-
-## Screenshots
-
-| Catalog | Product card | Cart |
-|---|---|---|
-| ![Catalog](screenshots/catalog.png) | ![Product](screenshots/product.png) | ![Cart](screenshots/cart.png) |
-
-| Checkout | Orders | Stats |
-|---|---|---|
-| ![Checkout](screenshots/checkout.png) | ![Orders](screenshots/orders.png) | ![Stats](screenshots/stats.png) |
 
 ## Tech Stack
 
@@ -96,6 +91,12 @@ python scripts/smoke_test.py
 # Ход — Telegram-бот магазина настольных игр (RU)
 
 Телеграм-бот магазина настольных игр «Ход»: каталог из 4 категорий и 12 реальных настолок, корзина с изменением количества, оформление заказа пошаговой формой (FSM), история заказов `/orders` и админ-статистика `/stats`. Заказы хранятся в SQLite — база `shop.db` создаётся и наполняется автоматически при первом запуске.
+
+**Честно об ограничениях:** корзина и FSM-форма живут в памяти
+(`dict` + `MemoryStorage` aiogram) и сбрасываются при перезапуске бота;
+в базе сохраняются только оформленные заказы. `/orders` показывает
+последние 10 заказов пользователя. Скриншотов в репозитории пока нет —
+запустите бота и посмотрите вживую.
 
 ## Быстрый старт
 

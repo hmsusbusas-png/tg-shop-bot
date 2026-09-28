@@ -160,18 +160,22 @@ def create_order(
     """Сохраняет заказ вместе с позициями одной транзакцией, возвращает номер заказа."""
     total = sum(item["price"] * item["qty"] for item in items)
     created_at = datetime.now().isoformat(timespec="seconds")
-    order_id = _conn.execute(
-        "INSERT INTO orders (user_id, username, customer_name, phone, address, comment, total, status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?)",
-        (user_id, username, customer_name, phone, address, comment, total, created_at),
-    ).lastrowid
-    _conn.executemany(
-        "INSERT INTO order_items (order_id, product_id, product_title, price, qty) VALUES (?, ?, ?, ?, ?)",
-        [
-            (order_id, item["id"], item["title"], item["price"], item["qty"])
-            for item in items
-        ],
-    )
+    try:
+        order_id = _conn.execute(
+            "INSERT INTO orders (user_id, username, customer_name, phone, address, comment, total, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?)",
+            (user_id, username, customer_name, phone, address, comment, total, created_at),
+        ).lastrowid
+        _conn.executemany(
+            "INSERT INTO order_items (order_id, product_id, product_title, price, qty) VALUES (?, ?, ?, ?, ?)",
+            [
+                (order_id, item["id"], item["title"], item["price"], item["qty"])
+                for item in items
+            ],
+        )
+    except Exception:
+        _conn.rollback()  # не оставляем «висящий» заказ без позиций
+        raise
     _conn.commit()
     return order_id
 

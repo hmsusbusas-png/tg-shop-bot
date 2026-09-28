@@ -1,7 +1,9 @@
 """Оформление заказа (FSM), история заказов и админ-статистика."""
+import html
 import re
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -17,6 +19,18 @@ router = Router(name="checkout")
 
 PHONE_RE = re.compile(r"^\+?\d[\d\s\-()]{6,18}$")
 STATUS_LABELS = {"new": "новый", "done": "выполнен", "cancelled": "отменён"}
+
+
+async def safe_edit(message: Message, text: str, reply_markup=None) -> None:
+    """edit_text, который переживает повторные нажатия и 'message is not modified'."""
+    try:
+        await message.edit_text(text, reply_markup=reply_markup)
+    except TelegramBadRequest:
+        # сообщение не изменилось или уже недоступно — просто отвечаем заново
+        try:
+            await message.answer(text, reply_markup=reply_markup)
+        except TelegramBadRequest:
+            pass
 
 
 class CheckoutStates(StatesGroup):
@@ -80,34 +94,46 @@ async def process_address(message: Message, state: FSMContext) -> None:
     await message.answer(order_summary(data, items), reply_markup=confirm_kb())
 
 
+@router.message(StateFilter(CheckoutStates.name, CheckoutStates.phone, CheckoutStates.address))
+async def fsm_needs_text(message: Message) -> None:
+    """Фолбэк: в форме принимаем только текст (фото/стикеры/голос игнорируем понятно)."""
+    await message.answer(
+        "Пожалуйста, отправьте ответ обычным текстовым сообщением ✍️\n"
+        "(фото, стикеры и голосовые на этом шаге не подходят)."
+    )
+
+
 @router.callback_query(CheckoutStates.confirm, ConfirmCB.filter(F.action == "yes"))
 async def confirm_order(cb: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     items = get_items(cb.from_user.id)
-    if not items:
+    if not items or not data.get("name"):
         await state.clear()
-        await cb.message.edit_text(
+        await safe_edit(
+            cb.message,
             "Корзина опустела — заказать не получилось. Соберите её заново 🎲",
-            reply_markup=back_to_catalog_kb(),
+            back_to_catalog_kb(),
         )
         await cb.answer()
         return
+    name, phone = data["name"], data["phone"]
     order_id = db.create_order(
         user_id=cb.from_user.id,
         username=cb.from_user.username or "",
-        customer_name=data["name"],
-        phone=data["phone"],
+        customer_name=name,
+        phone=phone,
         address=data["address"],
         comment="",
         items=items,
     )
     clear_cart(cb.from_user.id)
     await state.clear()
-    await cb.message.edit_text(
+    await safe_edit(
+        cb.message,
         f"✅ <b>Заказ №{order_id} принят!</b>\n\n"
-        f"{data['name']}, мы позвоним на {data['phone']} и согласуем доставку.\n"
+        f"{html.escape(name)}, мы позвоним на {html.escape(phone)} и согласуем доставку.\n"
         "Хорошей игры! 🎲",
-        reply_markup=back_to_catalog_kb(),
+        back_to_catalog_kb(),
     )
     await cb.answer()
 
@@ -115,11 +141,19 @@ async def confirm_order(cb: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(CheckoutStates.confirm, ConfirmCB.filter(F.action == "no"))
 async def cancel_order(cb: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await cb.message.edit_text(
+    await safe_edit(
+        cb.message,
         "Оформление отменено. Корзина сохранена — можно вернуться к ней в любой момент.",
-        reply_markup=back_to_catalog_kb(),
+        back_to_catalog_kb(),
     )
     await cb.answer()
+
+
+@router.callback_query(ConfirmCB.filter())
+async def stale_confirm(cb: CallbackQuery) -> None:
+    """Повторное нажатие Да/Нет после завершения оформления (state уже сброшен)."""
+    await cb.answer("Это оформление уже завершено — начните заново из корзины 🛒",
+                    show_alert=True)
 
 
 @router.message(Command("cancel"))
@@ -175,15 +209,15 @@ def order_summary(data: dict, items: list[dict]) -> str:
     lines = ["📋 <b>Проверьте заказ</b>", ""]
     for item in items:
         lines.append(
-            f"• {item['title']} × {item['qty']} — {format_price(item['price'] * item['qty'])}"
+            f"• {html.escape(item['title'])} × {item['qty']} — {format_price(item['price'] * item['qty'])}"
         )
     lines.append(f"💰 Итого: {format_price(cart_total(items))}")
     lines.extend(
         [
             "",
-            f"👤 Имя: {data['name']}",
-            f"📞 Телефон: {data['phone']}",
-            f"📍 Адрес: {data['address']}",
+            f"👤 Имя: {html.escape(data['name'])}",
+            f"📞 Телефон: {html.escape(data['phone'])}",
+            f"📍 Адрес: {html.escape(data['address'])}",
             "",
             "Всё верно?",
         ]

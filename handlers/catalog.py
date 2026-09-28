@@ -1,5 +1,6 @@
 """Каталог: приветствие, категории, список игр, карточка товара."""
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -18,6 +19,14 @@ from keyboards import (
 from .cart import add_item
 
 router = Router(name="catalog")
+
+
+async def safe_edit(cb: CallbackQuery, text: str, reply_markup=None) -> None:
+    """edit_text, который не падает на повторном нажатии той же кнопки."""
+    try:
+        await cb.message.edit_text(text, reply_markup=reply_markup)
+    except TelegramBadRequest:
+        pass  # 'message is not modified' или сообщение уже недоступно
 
 WELCOME = (
     "Привет, {name}! 👋\n\n"
@@ -47,15 +56,13 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "start")
 async def back_to_start(cb: CallbackQuery) -> None:
-    await cb.message.edit_text(HOME_TEXT, reply_markup=catalog_button())
+    await safe_edit(cb, HOME_TEXT, reply_markup=catalog_button())
     await cb.answer()
 
 
 @router.callback_query(F.data == "catalog")
 async def show_categories(cb: CallbackQuery) -> None:
-    await cb.message.edit_text(
-        CATEGORIES_TITLE, reply_markup=categories_kb(db.get_categories())
-    )
+    await safe_edit(cb, CATEGORIES_TITLE, reply_markup=categories_kb(db.get_categories()))
     await cb.answer()
 
 
@@ -65,7 +72,8 @@ async def show_products(cb: CallbackQuery, callback_data: CategoryCB) -> None:
     if not products:
         await cb.answer("В этой категории пока пусто", show_alert=True)
         return
-    await cb.message.edit_text(
+    await safe_edit(
+        cb,
         f"🎲 <b>{products[0]['category_title']}</b>\nВыберите игру:",
         reply_markup=products_kb(products),
     )
@@ -84,9 +92,7 @@ async def show_product(cb: CallbackQuery, callback_data: ProductCB) -> None:
         f"{product['description']}\n\n"
         f"💰 Цена: {format_price(product['price'])}"
     )
-    await cb.message.edit_text(
-        text, reply_markup=product_kb(product["id"], product["category_id"])
-    )
+    await safe_edit(cb, text, reply_markup=product_kb(product["id"], product["category_id"]))
     await cb.answer()
 
 
