@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB) ![aiogram](https://img.shields.io/badge/aiogram-3.x-2CA5E0) ![SQLite](https://img.shields.io/badge/SQLite-stdlib-003B57)
 
-**Khod** («Ход») is a Telegram shop bot for a board game store. Customers browse a catalog of real games, build a cart, and place an order through a step-by-step form — everything is stored in a local SQLite database. No external services, one command to run.
+**Khod** («Ход») is a Telegram shop bot for a board game store. Customers browse a catalog of familiar games, build a cart, and place an order through a step-by-step form. Orders are stored in a local SQLite database; the cart and active form state live in memory. No external services, one command to run.
 
 ## Features
 
