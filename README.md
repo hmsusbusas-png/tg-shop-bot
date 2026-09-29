@@ -1,120 +1,92 @@
-# Khod — Telegram Shop Bot for Board Games
+# Ход — Telegram-бот магазина настольных игр
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB) ![aiogram](https://img.shields.io/badge/aiogram-3.x-2CA5E0) ![SQLite](https://img.shields.io/badge/SQLite-stdlib-003B57)
 
-**Khod** («Ход») is a Telegram shop bot for a board game store. Customers browse a catalog of familiar games, build a cart, and place an order through a step-by-step form. Orders are stored in a local SQLite database; the cart and active form state live in memory. No external services, one command to run.
+«Ход» — Telegram-бот магазина настольных игр: покупатель листает каталог, собирает корзину и оформляет заказ пошаговой формой. Заказы хранятся в локальной базе SQLite, корзина и состояние формы живут в памяти. Внешних сервисов нет, запускается одной командой.
 
-## Features
+## Возможности
 
-- 🎲 **Catalog** — 4 categories (Family, Strategy, Party, Kids) and 12 real board games with meaningful descriptions and prices
-- 🛒 **Cart** — add games, change quantity with `+/−`, remove items, clear the cart, live total
-- 📝 **Checkout** — FSM-based form: name → phone (validated) → address/comment → confirmation
-- 📦 **Order history** — `/orders` shows the last 10 orders of the current user with items and totals
-- 📊 **Admin stats** — `/stats` shows order count, revenue and top-5 games (for the configured `ADMIN_ID`)
-- 💾 **SQLite storage** — `shop.db` is created and seeded automatically on first run
+- каталог из 4 категорий и 12 реальных настолок с осмысленными описаниями и ценами
+- корзина с изменением количества кнопками +/− — сумма пересчитывается на месте, без перезапросов; позиции можно убирать, корзину очищать целиком
+- оформление заказа FSM-формой: имя → телефон (с валидацией) → адрес/комментарий → подтверждение
+- история заказов: `/orders` показывает последние 10 заказов пользователя с составом и суммами
+- админ-статистика `/stats`: число заказов, выручка и топ-5 игр (для заданного `ADMIN_ID`)
+- база `shop.db` создаётся и наполняется товарами автоматически при первом запуске
+- без `BOT_TOKEN` бот печатает понятную подсказку по настройке и завершает работу
 
-> **Honest limitations:** the cart and the checkout FSM live in memory
-> (`dict` + aiogram `MemoryStorage`), so they are reset when the bot
-> restarts. Only paid orders are durable — they are stored in SQLite.
-> `/orders` returns the last 10 orders per user. There are no screenshots
-> in this repo yet — run the bot to see it live.
+## Быстрый старт
 
-## Quick Start
-
-1. Create a bot with [@BotFather](https://t.me/BotFather) and copy the token.
-2. Install dependencies (Python **3.10+**, tested on 3.14):
+1. Создайте бота у [@BotFather](https://t.me/BotFather) и скопируйте токен.
+2. Склонируйте репозиторий и установите зависимости (Python 3.10+, проверено на 3.14):
 
    ```bash
    python -m pip install -r requirements.txt
    ```
 
-3. Put the token into the `BOT_TOKEN` environment variable:
+3. Задайте токен в переменную окружения:
 
    ```bash
-   # Windows (PowerShell)
+   # PowerShell
    $env:BOT_TOKEN = "123456789:AAF..."
 
    # Linux / macOS
    export BOT_TOKEN="123456789:AAF..."
    ```
 
-4. Run the bot:
+4. Запустите бота:
 
    ```bash
    python bot.py
    ```
 
-Without `BOT_TOKEN` the bot prints a clear setup hint and exits.
+При первом запуске создаётся и наполняется база `shop.db`. Без токена бот выведет подсказку по настройке и завершится.
 
-### Environment variables
+### Переменные окружения
 
-| Variable   | Required | Description                                        |
-|------------|----------|----------------------------------------------------|
-| `BOT_TOKEN`| yes      | Token from @BotFather                              |
-| `DB_PATH`  | no       | SQLite file path (default: `shop.db`)              |
-| `ADMIN_ID` | no       | Your Telegram numeric id — enables `/stats`        |
+| Переменная  | Нужна | Описание                                            |
+|-------------|-------|-----------------------------------------------------|
+| `BOT_TOKEN` | да    | токен от @BotFather                                 |
+| `DB_PATH`   | нет   | путь к файлу SQLite (по умолчанию `shop.db`)        |
+| `ADMIN_ID`  | нет   | ваш числовой Telegram id — включает `/stats`        |
 
-## Project Structure
+## Проверка
 
-```
-tg-shop-bot/
-├── bot.py               # entrypoint: token check, Dispatcher, polling
-├── config.py            # env-based configuration (BOT_TOKEN, DB_PATH, ADMIN_ID)
-├── db.py                # SQLite schema, seed data, query helpers
-├── keyboards.py         # inline keyboards and callback-data factories
-├── handlers/
-│   ├── catalog.py       # /start, categories, product cards
-│   ├── cart.py          # cart view, quantity +/-, remove, clear
-│   └── checkout.py      # FSM checkout, /orders, /stats, /cancel
-├── scripts/
-│   └── smoke_test.py    # offline test: imports, db init/seed, dispatcher
-├── requirements.txt
-└── README.md
-```
-
-## Tech Stack
-
-- Python 3.10+ (tested on 3.14)
-- [aiogram 3.x](https://docs.aiogram.dev/) — FSM on `MemoryStorage`, inline keyboards, callback-data factories
-- SQLite via stdlib `sqlite3` (no ORM)
-
-## Testing
-
-Offline smoke test (no token needed) — checks imports, database init/seed, order flow and dispatcher assembly:
+Офлайн-смоук-тест (токен не нужен): импорты, инициализация и наполнение базы, сценарий заказа, сборка диспетчера.
 
 ```bash
 python scripts/smoke_test.py
 ```
 
+## Честно об ограничениях
+
+- корзина и FSM-форма живут в памяти (`dict` + `MemoryStorage` aiogram) и сбрасываются при перезапуске бота; в базе остаются только оформленные заказы
+- `/orders` показывает последние 10 заказов пользователя
+- скриншотов в репозитории пока нет — запустите бота и посмотрите вживую
+
+## Структура
+
+```
+tg-shop-bot/
+├── bot.py               # входная точка: проверка токена, Dispatcher, polling
+├── config.py            # конфиг из переменных окружения (BOT_TOKEN, DB_PATH, ADMIN_ID)
+├── db.py                # схема SQLite, сид-данные, хелперы запросов
+├── keyboards.py         # inline-клавиатуры и фабрики callback-data
+├── handlers/
+│   ├── catalog.py       # /start, категории, карточки товаров
+│   ├── cart.py          # корзина: просмотр, количество ±, удаление, очистка
+│   └── checkout.py      # FSM-оформление, /orders, /stats, /cancel
+├── scripts/
+│   └── smoke_test.py    # офлайн-тест: импорты, база, диспетчер
+├── requirements.txt
+└── README.md
+```
+
+## Стек
+
+Python 3.10+, aiogram 3.x (FSM на MemoryStorage, inline-клавиатуры, callback-data), SQLite через stdlib `sqlite3` без ORM.
+
 ---
 
-# Ход — Telegram-бот магазина настольных игр (RU)
+## EN
 
-Телеграм-бот магазина настольных игр «Ход»: каталог из 4 категорий и 12 реальных настолок, корзина с изменением количества, оформление заказа пошаговой формой (FSM), история заказов `/orders` и админ-статистика `/stats`. Заказы хранятся в SQLite — база `shop.db` создаётся и наполняется автоматически при первом запуске.
-
-**Честно об ограничениях:** корзина и FSM-форма живут в памяти
-(`dict` + `MemoryStorage` aiogram) и сбрасываются при перезапуске бота;
-в базе сохраняются только оформленные заказы. `/orders` показывает
-последние 10 заказов пользователя. Скриншотов в репозитории пока нет —
-запустите бота и посмотрите вживую.
-
-## Быстрый старт
-
-1. Создайте бота у [@BotFather](https://t.me/BotFather) и скопируйте токен.
-2. Установите зависимости (Python **3.10+**, проверено на 3.14):
-
-   ```bash
-   python -m pip install -r requirements.txt
-   ```
-
-3. Задайте токен в переменную окружения и запустите:
-
-   ```bash
-   # PowerShell
-   $env:BOT_TOKEN = "123456789:AAF..."
-   python bot.py
-   ```
-
-Опционально: `ADMIN_ID` — ваш числовой Telegram id (включает `/stats`), `DB_PATH` — путь к файлу базы.
-
-Без токена бот печатает понятную подсказку по настройке и завершает работу.
+Khod is a Telegram shop bot for a board game store: customers browse a catalog of 12 games, build a cart and place an order through an FSM checkout form. Orders live in a local SQLite database; the cart and form state are in-memory. Set `BOT_TOKEN` and run `python bot.py`. Python 3.10+, aiogram 3.x — details in the Russian section above.
