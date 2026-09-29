@@ -72,6 +72,7 @@ tg-shop-bot/
 ├── db.py                # схема SQLite, сид-данные, хелперы запросов
 ├── keyboards.py         # inline-клавиатуры и фабрики callback-data
 ├── handlers/
+│   ├── __init__.py       # сборка роутеров
 │   ├── catalog.py       # /start, категории, карточки товаров
 │   ├── cart.py          # корзина: просмотр, количество ±, удаление, очистка
 │   └── checkout.py      # FSM-оформление, /orders, /stats, /cancel
