@@ -11,14 +11,14 @@ from aiogram.types import CallbackQuery, Message
 
 import config
 import db
-from keyboards import CartCB, ConfirmCB, back_to_catalog_kb, confirm_kb, format_price
+from keyboards import CartCB, ConfirmCB, catalog_kb, confirm_kb, price_str
 
-from .cart import cart_total, clear_cart, get_items
+from .cart import clear_cart, get_items, total
 
 router = Router(name="checkout")
 
-PHONE_RE = re.compile(r"^\+?\d[\d\s\-()]{6,18}$")
-STATUS_LABELS = {"new": "новый", "done": "выполнен", "cancelled": "отменён"}
+PHONE = re.compile(r"^\+?\d[\d\s\-()]{6,18}$")
+STATUSES = {"new": "новый", "done": "выполнен", "cancelled": "отменён"}
 
 
 async def safe_edit(message: Message, text: str, reply_markup=None) -> None:
@@ -68,7 +68,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
 @router.message(CheckoutStates.phone, F.text)
 async def process_phone(message: Message, state: FSMContext) -> None:
     phone = message.text.strip()
-    if not PHONE_RE.fullmatch(phone):
+    if not PHONE.fullmatch(phone):
         await message.answer(
             "Не похоже на телефон. Введите номер в формате +7 900 123-45-67:"
         )
@@ -91,12 +91,11 @@ async def process_address(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     items = get_items(message.from_user.id)
     await state.set_state(CheckoutStates.confirm)
-    await message.answer(order_summary(data, items), reply_markup=confirm_kb())
+    await message.answer(summary(data, items), reply_markup=confirm_kb())
 
 
 @router.message(StateFilter(CheckoutStates.name, CheckoutStates.phone, CheckoutStates.address))
-async def fsm_needs_text(message: Message) -> None:
-    """Фолбэк: в форме принимаем только текст (фото/стикеры/голос игнорируем понятно)."""
+async def need_text(message: Message) -> None:
     await message.answer(
         "Пожалуйста, отправьте ответ обычным текстовым сообщением ✍️\n"
         "(фото, стикеры и голосовые на этом шаге не подходят)."
@@ -112,7 +111,7 @@ async def confirm_order(cb: CallbackQuery, state: FSMContext) -> None:
         await safe_edit(
             cb.message,
             "Корзина опустела — заказать не получилось. Соберите её заново 🎲",
-            back_to_catalog_kb(),
+            catalog_kb(),
         )
         await cb.answer()
         return
@@ -133,7 +132,7 @@ async def confirm_order(cb: CallbackQuery, state: FSMContext) -> None:
         f"✅ <b>Заказ №{order_id} принят!</b>\n\n"
         f"{html.escape(name)}, мы позвоним на {html.escape(phone)} и согласуем доставку.\n"
         "Хорошей игры! 🎲",
-        back_to_catalog_kb(),
+        catalog_kb(),
     )
     await cb.answer()
 
@@ -144,13 +143,13 @@ async def cancel_order(cb: CallbackQuery, state: FSMContext) -> None:
     await safe_edit(
         cb.message,
         "Оформление отменено. Корзина сохранена — можно вернуться к ней в любой момент.",
-        back_to_catalog_kb(),
+        catalog_kb(),
     )
     await cb.answer()
 
 
 @router.callback_query(ConfirmCB.filter())
-async def stale_confirm(cb: CallbackQuery) -> None:
+async def late_confirm(cb: CallbackQuery) -> None:
     """Повторное нажатие Да/Нет после завершения оформления (state уже сброшен)."""
     await cb.answer("Это оформление уже завершено — начните заново из корзины 🛒",
                     show_alert=True)
@@ -175,10 +174,10 @@ async def cmd_orders(message: Message) -> None:
         items = db.get_order_items(order["id"])
         items_str = ", ".join(f"{item['product_title']} × {item['qty']}" for item in items)
         created = order["created_at"].replace("T", " ")
-        status = STATUS_LABELS.get(order["status"], order["status"])
+        status = STATUSES.get(order["status"], order["status"])
         lines.append(
             f"№{order['id']} · {created}\n{items_str}\n"
-            f"💰 {format_price(order['total'])} · статус: {status}\n"
+            f"💰 {price_str(order['total'])} · статус: {status}\n"
         )
     await message.answer("\n".join(lines))
 
@@ -193,7 +192,7 @@ async def cmd_stats(message: Message) -> None:
         "📊 <b>Статистика магазина</b>",
         "",
         f"Заказов: {stats['orders']}",
-        f"Выручка: {format_price(stats['revenue'])}",
+        f"Выручка: {price_str(stats['revenue'])}",
     ]
     if stats["top"]:
         lines.append("")
@@ -205,13 +204,13 @@ async def cmd_stats(message: Message) -> None:
     await message.answer("\n".join(lines))
 
 
-def order_summary(data: dict, items: list[dict]) -> str:
+def summary(data: dict, items: list[dict]) -> str:
     lines = ["📋 <b>Проверьте заказ</b>", ""]
     for item in items:
         lines.append(
-            f"• {html.escape(item['title'])} × {item['qty']} — {format_price(item['price'] * item['qty'])}"
+            f"• {html.escape(item['title'])} × {item['qty']} — {price_str(item['price'] * item['qty'])}"
         )
-    lines.append(f"💰 Итого: {format_price(cart_total(items))}")
+    lines.append(f"💰 Итого: {price_str(total(items))}")
     lines.extend(
         [
             "",

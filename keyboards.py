@@ -9,21 +9,21 @@ class CategoryCB(CallbackData, prefix="cat"):
 
 
 class ProductCB(CallbackData, prefix="prd"):
-    action: str  # view | add
+    action: str
     product_id: int
     category_id: int = 0
 
 
 class CartCB(CallbackData, prefix="crt"):
-    action: str  # inc | dec | remove | clear | checkout
+    action: str
     product_id: int = 0
 
 
 class ConfirmCB(CallbackData, prefix="cfm"):
-    action: str  # yes | no
+    action: str
 
 
-def format_price(value: int) -> str:
+def price_str(value: int) -> str:
     return f"{value:,}".replace(",", " ") + " ₽"
 
 
@@ -33,7 +33,7 @@ def catalog_button() -> InlineKeyboardMarkup:
     )
 
 
-def back_to_catalog_kb() -> InlineKeyboardMarkup:
+def catalog_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="🎲 В каталог", callback_data="catalog")]]
     )
@@ -55,7 +55,7 @@ def products_kb(products) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for product in products:
         builder.button(
-            text=f"{product['title']} · {format_price(product['price'])}",
+            text=f"{product['title']} · {price_str(product['price'])}",
             callback_data=ProductCB(
                 action="view", product_id=product["id"], category_id=product["category_id"]
             ).pack(),

@@ -11,7 +11,7 @@ from keyboards import (
     ProductCB,
     catalog_button,
     categories_kb,
-    format_price,
+    price_str,
     product_kb,
     products_kb,
 )
@@ -90,7 +90,7 @@ async def show_product(cb: CallbackQuery, callback_data: ProductCB) -> None:
         f"🎲 <b>{product['title']}</b>\n"
         f"<i>{product['category_title']}</i>\n\n"
         f"{product['description']}\n\n"
-        f"💰 Цена: {format_price(product['price'])}"
+        f"💰 Цена: {price_str(product['price'])}"
     )
     await safe_edit(cb, text, reply_markup=product_kb(product["id"], product["category_id"]))
     await cb.answer()

@@ -1,7 +1,4 @@
-"""Offline smoke test: imports, db init/seed, dispatcher assembly (no polling).
-
-Run: python scripts/smoke_test.py
-"""
+"""Offline smoke test: imports, db init/seed, order flow, dispatcher assembly."""
 import os
 import sys
 import tempfile
@@ -11,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-import bot  # noqa: F401 — entry module must import cleanly without a token
+import bot  # noqa: F401
 import db
 import keyboards
 from handlers import cart, catalog, checkout
@@ -57,7 +54,7 @@ def main() -> None:
     dp.include_routers(catalog.router, cart.router, checkout.router)
     assert len(dp.sub_routers) == 3, "routers not registered"
 
-    assert keyboards.format_price(2490) == "2 490 ₽"
+    assert keyboards.price_str(2490) == "2 490 ₽"
     print(f"OK: imports, db init, seed ({products_total} products), order flow, dispatcher assembled")
 
 

@@ -4,7 +4,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery
 
 import db
-from keyboards import CartCB, cart_kb, format_price
+from keyboards import CartCB, cart_kb, price_str
 
 router = Router(name="cart")
 
@@ -45,7 +45,7 @@ def get_items(user_id: int) -> list[dict]:
     return items
 
 
-def cart_total(items: list[dict]) -> int:
+def total(items: list[dict]) -> int:
     return sum(item["price"] * item["qty"] for item in items)
 
 
@@ -53,11 +53,11 @@ def cart_text(items: list[dict]) -> str:
     lines = ["🛍 <b>Ваша корзина</b>", ""]
     for number, item in enumerate(items, 1):
         lines.append(
-            f"{number}. {item['title']} — {item['qty']} × {format_price(item['price'])} "
-            f"= {format_price(item['price'] * item['qty'])}"
+            f"{number}. {item['title']} — {item['qty']} × {price_str(item['price'])} "
+            f"= {price_str(item['price'] * item['qty'])}"
         )
     lines.append("")
-    lines.append(f"💰 Итого: {format_price(cart_total(items))}")
+    lines.append(f"💰 Итого: {price_str(total(items))}")
     return "\n".join(lines)
 
 
